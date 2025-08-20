@@ -3,13 +3,33 @@
 const chatForm = document.querySelector('#chat-input-form');
 const messageInput = document.querySelector('#message-input');
 const messagesArea = document.querySelector('#chat-messages');
-const n8nWebhookUrl = 'https://n8n.jimpaul.net/webhook/4da14e7e-5bc8-4aa6-b0e1-6b83e5d1dabe'; // <-- MAKE SURE THIS IS YOUR URL
+const n8nWebhookUrl = 'https://n8n.jimpaul.net/webhook/live-chat-project'; // <-- MAKE SURE THIS IS YOUR URL
+
+// --- SESSION ID ---
+// Get a persistent session ID for the current browser tab session.
+const sessionId = getSessionId();
 
 // --- EVENT LISTENERS ---
 // Listen for the form submission event.
 chatForm.addEventListener('submit', handleFormSubmission);
 
 // --- FUNCTIONS ---
+
+/**
+ * Retrieves the session ID from sessionStorage or creates a new one.
+ * @returns {string} The unique session ID.
+ */
+function getSessionId() {
+    // Try to get the session ID from sessionStorage.
+    let id = sessionStorage.getItem('chatSessionId');
+
+    // If no ID exists, create a new one and save it.
+    if (!id) {
+        id = crypto.randomUUID();
+        sessionStorage.setItem('chatSessionId', id);
+    }
+    return id;
+}
 
 /**
  * Main handler for when the user submits the form.
@@ -62,10 +82,16 @@ function displayMessage(message, className) {
  * @returns {string} The bot's reply from the n8n workflow.
  */
 async function getBotReplyFromN8n(userMessage) {
+    const payload = {
+        sessionId: sessionId,
+        action: 'sendMessage',
+        chatInput: userMessage
+    };
+    
     const response = await fetch(n8nWebhookUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ message: userMessage })
+        body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
@@ -74,7 +100,9 @@ async function getBotReplyFromN8n(userMessage) {
     }
 
     const data = await response.json();
-    return data.reply;
+    // This is my first console.log I did myself to fix parsing response issue, yey!
+    console.log(data);
+    return data.output;
 }
 
 // --- TYPING INDICATOR FUNCTIONS ---
